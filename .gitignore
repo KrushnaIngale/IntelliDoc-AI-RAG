@@ -83,3 +83,9 @@ dist/
 # -----------------------------
 *.tmp
 *.temp
+
+
+.env
+__pycache__/
+chroma_db/
+*.pdf
