@@ -14,7 +14,7 @@ st.set_page_config(
     page_icon="📄"
 )
 
-st.title("📄 IntelliDoc AI")
+st.title("📄 IntelliDoc AI Book Assistant")
 st.write("Upload a PDF and chat with it")
 
 if "vector_store" not in st.session_state:
