@@ -2,7 +2,6 @@ import tempfile
 import streamlit as st
 
 from dotenv import load_dotenv
-
 from langchain_mistralai import ChatMistralAI
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -12,86 +11,42 @@ load_dotenv()
 
 st.set_page_config(
     page_title="IntelliDoc AI",
-    page_icon="📄",
-    layout="wide"
+    page_icon="📄"
 )
 
-# ----------------------------
-# SESSION STATE
-# ----------------------------
+st.title("📄 IntelliDoc AI")
+st.write("Upload a PDF and chat with it")
 
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# ----------------------------
-# HEADER
-# ----------------------------
-
-st.title("📄 IntelliDoc AI")
-
-st.markdown(
-    """
-Chat with your PDF using
-**Mistral AI + ChromaDB + RAG**
-"""
+uploaded_file = st.file_uploader(
+    "Upload PDF",
+    type=["pdf"]
 )
 
-# ----------------------------
-# SIDEBAR
-# ----------------------------
+if uploaded_file:
 
-with st.sidebar:
+    if st.button("Process PDF"):
 
-    st.header("Upload Document")
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".pdf"
+        ) as temp_file:
 
-    uploaded_file = st.file_uploader(
-        "Choose PDF",
-        type=["pdf"]
-    )
+            temp_file.write(uploaded_file.read())
+            temp_path = temp_file.name
 
-    if uploaded_file:
+        with st.spinner("Processing PDF..."):
 
-        if st.button("Process PDF"):
+            st.session_state.vector_store = (
+                create_vector_store(temp_path)
+            )
 
-            with st.spinner("Creating embeddings..."):
+        st.success("PDF Ready")
 
-                with tempfile.NamedTemporaryFile(
-                    delete=False,
-                    suffix=".pdf"
-                ) as temp_file:
-
-                    temp_file.write(uploaded_file.read())
-
-                    temp_path = temp_file.name
-
-                vector_store = create_vector_store(
-                    temp_path
-                )
-
-                st.session_state.vector_store = (
-                    vector_store
-                )
-
-            st.success("Document Ready")
-
-# ----------------------------
-# CHAT HISTORY
-# ----------------------------
-
-for message in st.session_state.messages:
-
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# ----------------------------
-# CHAT INPUT
-# ----------------------------
-
-question = st.chat_input(
-    "Ask a question about your PDF..."
+question = st.text_input(
+    "Ask a question"
 )
 
 if question:
@@ -99,20 +54,10 @@ if question:
     if st.session_state.vector_store is None:
 
         st.warning(
-            "Please upload and process a PDF first."
+            "Upload and process a PDF first."
         )
 
         st.stop()
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": question
-        }
-    )
-
-    with st.chat_message("user"):
-        st.markdown(question)
 
     retriever = (
         st.session_state.vector_store
@@ -129,10 +74,7 @@ if question:
     docs = retriever.invoke(question)
 
     context = "\n\n".join(
-        [
-            doc.page_content
-            for doc in docs
-        ]
+        [doc.page_content for doc in docs]
     )
 
     prompt = ChatPromptTemplate.from_messages(
@@ -144,10 +86,10 @@ You are a helpful AI assistant.
 
 Use ONLY the provided context.
 
-If answer is not available,
+If the answer is not present in the context,
 say:
 
-'I could not find the answer in the document.'
+I could not find the answer in the document.
 """
             ),
             (
@@ -178,35 +120,5 @@ Question:
         final_prompt
     )
 
-    answer = response.content
-
-    sources = []
-
-    for doc in docs:
-
-        if "page" in doc.metadata:
-
-            page = doc.metadata["page"] + 1
-
-            sources.append(
-                f"Page {page}"
-            )
-
-    if sources:
-
-        answer += (
-            "\n\n---\n**Sources:** "
-            + ", ".join(
-                list(set(sources))
-            )
-        )
-
-    with st.chat_message("assistant"):
-        st.markdown(answer)
-
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": answer
-        }
-    )
+    st.subheader("Answer")
+    st.write(response.content)
