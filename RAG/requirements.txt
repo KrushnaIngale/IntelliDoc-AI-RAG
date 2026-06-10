@@ -9,7 +9,8 @@ langchain-huggingface
 langchain-mistralai
 langchain-community
 
-chromadb==0.5.23
+chromadb==0.4.24
+langchain-chroma==0.1.4
 protobuf==3.20.3
 
 sentence-transformers
